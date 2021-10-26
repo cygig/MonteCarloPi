@@ -5,10 +5,16 @@ Do note this method only estimates pi and will require a huge amount of good qua
 
 
 # Contents
-- [Updates?](#updates)
+- [Updates](#updates)
 - [How does It Work?](#how-does-it-work)
 - [Circles, Squares, Quadrants and Quarters](#circles-squares-quadrants-and-quarters)
 - [Benchmarking](#benchmarking)
+  - [Loop](#Loop)
+  - [Accurate to Decimal Places](#accurate-to-decimal-places)
+- [Multi Tasking](#multi-tasking)
+- [Public Functions](#public-functions)
+
+# How Does It Work?
 
 # Updates
 - To be updated
