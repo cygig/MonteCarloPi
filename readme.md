@@ -3,6 +3,8 @@ MonteCarloPi is a library to benchmark Arduinos by estimating the value of pi. I
 
 Do note this method only estimates pi and will require a huge amount of good quality random numbers to give a good estimate. It is far from the most efficient method to estimate or calculate pi, but works well enough for the purpose of benchmark.
 
+![image](extras/montecarlopi.jpg)
+
 
 # Contents
 - [Updates](#updates)
@@ -11,14 +13,14 @@ Do note this method only estimates pi and will require a huge amount of good qua
 - [Benchmarking](#benchmarking)
   - [Loop](#Loop)
   - [Accurate to Decimal Places](#accurate-to-decimal-places)
-- [Multi Tasking](#multi-tasking)
+- [Multi-core Benmchmark](#multi-core-benchmark)
+- [Default Values](#default-values)
 - [Public Functions](#public-functions)
 
 # How Does It Work?
 
 # Updates
 - To be updated
-
 
 # How Does It Work?
 Imagine inscribing a circle in a square. We then place dots (of the same size) randomly all over the square. If we can place infinite dots inside the square, we will be calculating the area of the square.
@@ -116,9 +118,52 @@ Do take note not to be overly ambitious when it comes to setting accuracy of the
 
 This mode relies on a copy of pi in the library as a reference. Also, take note that this library uses the standard `srand(...)` and `rand()`from C++, other parts of the software can mess up the random number generator if those are called.
 
-# Multi Tasking
+# Multi-core Benchmark
+It is easy to implement the benchmark for a single core Arduino:
+```
+#include <MonteCarloPi.h>
+MonteCarloPi myPi;
+...
+myPi.startTimer();
+pi = myPi.piLoop(500000); // Loop 500000 times
+myPi.stopTimer();
+
+// Display results
+// Use getTime(), getSquares(), getPi
+...
+myPi.reset();
+myPi.reseed();
+...
+myPi.startTimer();
+pi = myPi.piToDP(4); // Estimate till correct to 4 decimal places
+myPi.stopTimer();
+
+// Display results
+...
+```
+However, it takes more effort to implement a multi-core benchmark. Included in this library is an example for ESP32. A flowchart is provided to show the steps taken for a dual-cores Arduino (like the ESP32) to do multi-core benchmark.
+
+It makes use of the RTOS supported by ESP32 to create and delete multiple tasks. In our tests, the dual cores of ESP32 seemed to perform inconsistently: sometimes Core 0 is faster, sometimes Core 1 is faster and sometimes they are almost as fast. We are not sure why.
+
+In the example, we will allow RTOS to pick whichever core it wants to for single-core benchmarks.
+
+For Loop benchmark, we will pin one task to one core and allow them to execute as fast as possible continuously until the total number of loops is reached. For Accurate to Decimal Places benchmark, we will also pin one task to each core and have them run as fast as possible until a result that satisfy the accuracy is found.
+
 ## Flowchart
 ![image](extras/MonteCarloPi_flowchart.svg)
+
+# Default Values
+To maintain consistency, these are the default values for some of the constants in the library. It is recommended to try these out first before tweaking them.
+
+| Constant | Default Value | Remarks |
+| ---       | ---           | ---     |
+|No. of Loops | 500,000 | Can take a few minutes for slower Arduino like the Uno|
+| Decimal Place Accuracy | 5 | |
+| Seed | 69 | Arbitrarily chosen |
+| Pi Reference | 3.14159265359 | |
+
+
+
 # Public Functions
 
 ## MonteCarloPi()
