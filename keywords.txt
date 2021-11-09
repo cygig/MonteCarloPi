@@ -1,0 +1,24 @@
+MonteCarloPi	KEYWORD1
+
+runOnce	KEYWORD2
+piLoop	KEYWORD2
+piToDP	KEYWORD2
+setDP	KEYWORD2
+isAccurate	KEYWORD2
+computePi	KEYWORD2
+getSquares	KEYWORD2
+getCircles	KEYWORD2
+getPi	KEYWORD2
+getDP	KEYWORD2
+getX	KEYWORD2
+getY	KEYWORD2
+setCircleSquare	KEYWORD2
+reset	KEYWORD2
+reseed	KEYWORD2
+setSeed	KEYWORD2
+startTimer	KEYWORD2
+stopTimer	KEYWORD2
+resetTimer	KEYWORD2
+getTime	KEYWORD2
+
+referencePi	LITERAL1

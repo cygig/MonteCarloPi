@@ -1,7 +1,7 @@
 # MonteCarloPi
 MonteCarloPi is a library to benchmark Arduinos by estimating the value of pi. It uses the Monte Carlo method to estimate pi, and it works with both single core Arduino like the UNO as well as multi-core ones like ESP32.
 
-Do note this method only estimates pi and will require a huge amount of good quality random numbers to give a good estimate. It is far from the most efficient method to estimate or calculate pi, but works well enough for the purpose of benchmark.
+Do note this method only estimates pi and will require a huge amount of good quality random numbers to give a good estimate. It is far from the most efficient method to estimate or calculate pi, but works well enough for the purpose of benchmarking.
 
 ![image](extras/montecarlopi.jpg)
 
@@ -13,25 +13,26 @@ Do note this method only estimates pi and will require a huge amount of good qua
 - [Benchmarking](#benchmarking)
   - [Loop](#Loop)
   - [Accurate to Decimal Places](#accurate-to-decimal-places)
-- [Multi-core Benmchmark](#multi-core-benchmark)
+- [Multi-threaded Benmchmark](#multi-threaded-benchmark)
 - [Default Values](#default-values)
 - [Public Functions](#public-functions)
 
 # How Does It Work?
 
 # Updates
-- To be updated
+- v0.7.1
+  - First upload
 
 # How Does It Work?
-Imagine inscribing a circle in a square. We then place dots (of the same size) randomly all over the square. If we can place infinite dots inside the square, we will be calculating the area of the square.
+Imagine inscribing a circle in a square. We then place dots (of the same size) randomly all over the square. If we can place infinite dots inside the square, we will be describing the area of the square.
 
-We are interested in how many dots there are in the square, as as well how many inside the circle alone. Essentially, we are interested in finding out the ratio of the area of square to that of the circle.
+We are interested in the number of dots in the square and inside the circle. Essentially, we are interested in finding out the ratio of the area of square to that of the circle.
 
 ![image](extras/Monte%20Carlo%20Pi_dots.svg)
 
 Now we divide the square and circle into four parts, placing the centre of the square and circle at `0,0`, this makes it easy for two reasons:
 - The radius of the circle is now 1, making it easy for calculations
-- It is possible to determine if a dot landed within or on the circle
+- It is possible to determine if a dot landed within or on the circle using Pythagoras' theorem
 
 We'll be interested in the top right quadrant. The area of the square quarter will conveniently be `1×1=1`. The area of a whole circle is `pi×1×1=pi`, thus the area for the circle quadrant is `pi/4`. 
 
@@ -50,9 +51,9 @@ pi = 4(c/s)
 
 ![image](extras/Monte%20Carlo%20Pi_area.svg)
 
-Instead of spraying dots, we can instead randomly generate points where the x and y coordinates are between 0 and 1, inclusive. All the points will fall inside the square quarter, so we have one of our two values figured out.
+Instead of spraying dots, we can instead randomly generate points where their x and y coordinates are between 0 and 1, inclusive. The total number of points generated is also the number of points inside the square quarter, since all points will land within.
 
-How do we know if these points fall within the circle quadrant then? One of the reason to divide the whole square and circle into quarters is the ease of this calculation with two distinctive regions. We can also make use of Pythagoras' theorem, where in a triangle side _a_ and side _b_ form a right angle and _c_ is the longest third side:
+How do we know if these points fall within the circle quadrant then? We can make use of Pythagoras' theorem, where in a right angle triangle with sides _a_, _b_ and _c_, where _c_ is the longest side:
 
 ```
 c² = a² + b²
@@ -62,7 +63,7 @@ Given a point (x, y), a right angle triangle can be drawn with side _a_ being (0
 
 ![image](extras/Monte%20Carlo%20Pi_triangle.svg)
 
-Since the radius of the circle is 1, side _c_ cannot exceed 1 if (x, y) is within or on the circle. Imagine a pair of compasses can only be opened to 10cm, we will never be able to draw anything larger than a 10cm radius circle.
+Since the radius of the circle is 1, side _c_ cannot exceed 1 if (x, y) is within or on the circle. Imagine a pair of compasses can only be opened to 10cm wide, we will never be able to draw anything larger than a 10cm radius circle.
 
 
 ![image](extras/Monte%20Carlo%20Pi_points.svg)
@@ -88,8 +89,12 @@ There are two main ways to benchmark an Arduino using this library.
 ## Loop
 Looping is the most straightforward among the two. The library will
 
-1. Generate the desired number of random points
-2. Calculate pi
+1. Generate a random point
+2. Check if it is within the circle quadrant
+3. Update the number of points
+4. Repeat for the number of desired loops
+5. Estimate pi from the accumulated data
+
 
 We can then measure the time taken as a benchmark.
 
@@ -98,8 +103,8 @@ In this mode, the library will
 
 1. Generate a random point
 2. Check if it is within the circle quadrant
-3. Add that to the total numnber of points in the square quarter or circle quadrant
-4. Calculate pi
+3. Update the number of points
+4. Estimate pi from the accumulated data
 5. If the estimate is correct to the desired number of decimal points, it stops, else it goes on and on
 
 As the random points are, well, random, there is a good chance that a handful of points will coincidentally form an accurate estimate of pi.
@@ -108,18 +113,18 @@ For example, if we are targeting an accuracy of 3 decimal places (3.141, droppin
 
 To mitigate such issue, we can use the `reseed()` function before executing this test. This will ensure the "random" numbers are always the same to level the playing field. 
 
-The random numbers generated by Arduinos are usually not really random, but pre-compiled lists of random numbers. Each seed will produce one list of numbers and initiating the seed will restart the same list. The same seed should always produce the same list of numbers.
+The random numbers generated by Arduinos are usually not really random, but come from pre-compiled lists of numbers. Each seed will produce one list of numbers and initiating the seed will restart the same list. The same seed should always produce the same list of numbers.
 
 However, this lists can be still be different across different devices. The 10th seed for a Arduino Uno may be different from the 10th seed for the Expressif ESP32.
 
 Despite the shortfall, this can be still useful for benchmarking the same device (single core vs multi-core, with heatsink vs without etc.) While coincidences do happen, generally the faster the machine, the faster it takes to reach pi of the desired accuracy.
 
-Do take note not to be overly ambitious when it comes to setting accuracy of the decimal places. Due to the limitation of `float` and `double` in Arduino, it might take an unrealistically long time or never reach the desired decimal place accuracy. For AVR Arduinos like Uno, 4 to 5 is the most you should go. Use `setDP(byte DP)` to set the desired decimal places.
+Do take note not to be overly ambitious when it comes to setting the number of decimal places to be accurate to. Due to the limitation of `float` and `double` in Arduino, it might take an unrealistically long time or may never reach the desired decimal place accuracy. For AVR Arduinos like Uno, 4 to 5 is the most you should go.
 
 This mode relies on a copy of pi in the library as a reference. Also, take note that this library uses the standard `srand(...)` and `rand()`from C++, other parts of the software can mess up the random number generator if those are called.
 
-# Multi-core Benchmark
-It is easy to implement the benchmark for a single core Arduino:
+# Multi-threaded Benchmark
+It is easy to implement a single-threaded benchmark for a single-core Arduino:
 ```
 #include <MonteCarloPi.h>
 MonteCarloPi myPi;
@@ -141,13 +146,15 @@ myPi.stopTimer();
 // Display results
 ...
 ```
-However, it takes more effort to implement a multi-core benchmark. Included in this library is an example for ESP32. A flowchart is provided to show the steps taken for a dual-cores Arduino (like the ESP32) to do multi-core benchmark.
+However, it takes more effort to implement a multi-threaded benchmark on a multi-core Arduino. Included in this library is an example for ESP32. A flowchart is provided to show the steps taken for a dual-core Arduino (like the ESP32) to run multi-threaded benchmark.
 
-It makes use of the RTOS supported by ESP32 to create and delete multiple tasks. In our tests, the dual cores of ESP32 seemed to perform inconsistently: sometimes Core 0 is faster, sometimes Core 1 is faster and sometimes they are almost as fast. We are not sure why.
+The example makes use of the freeRTOS supported by ESP32 to create and delete multiple tasks. In our tests, the dual cores of ESP32 seemed to perform inconsistently: sometimes Core 0 is faster, sometimes Core 1 is faster and sometimes they are almost as fast. We are not sure why.
 
 In the example, we will allow RTOS to pick whichever core it wants to for single-core benchmarks.
 
-For Loop benchmark, we will pin one task to one core and allow them to execute as fast as possible continuously until the total number of loops is reached. For Accurate to Decimal Places benchmark, we will also pin one task to each core and have them run as fast as possible until a result that satisfy the accuracy is found.
+For Loop benchmark, we will pin one thread to each core and allow them to execute as fast as possible continuously until the total number of loops is reached. For Accurate to Decimal Places benchmark, we will also pin one thread to each core and have them run independently as fast as possible until one of them produce a result that satisfy the accuracy.
+
+While the example demonstrate the benchmark with two threads, feel free to experiment with other number of threads from 1 to 183, where anything more seems to crash the Arduino.
 
 ## Flowchart
 ![image](extras/MonteCarloPi_flowchart.svg)
@@ -160,7 +167,7 @@ To maintain consistency, these are the default values for some of the constants 
 |No. of Loops | 500,000 | Can take a few minutes for slower Arduino like the Uno|
 | Decimal Place Accuracy | 5 | |
 | Seed | 69 | Arbitrarily chosen |
-| Pi Reference | 3.14159265359 | |
+| Pi Reference | 3.14159265359 | A static constant double referred to as `referencePi` |
 
 
 
@@ -169,23 +176,23 @@ To maintain consistency, these are the default values for some of the constants 
 ## MonteCarloPi()
 Constructor. Will use the default seed.
 
-## MonteCarloPi(_unsigned long_ mySeed)
+## MonteCarloPi(_unsigned int_ mySeed)
 Constructor where you can set your own seed.
 
 ## _double_ piLoop(_unsigned long_ myLoop)
 The most basic of all benchmark, see [Loop](#loop). myLoop is the number of times you wish to loop. Returns the estimated value of pi.
 
 ## _double_ piToDP(_byte_ myDP)
-Estimates pi until the desired decimal places, which is myDP. Returns the estimated value of pi. See [Accurate to Decimal Places](#accurate-to-decimal-places).
+Estimates pi repeatedly until the desired decimal places, which is myDP, is reached. Returns the estimated value of pi. See [Accurate to Decimal Places](#accurate-to-decimal-places).
 
 ## _void_ runOnce()
 Generates one random point. Checks if the random point falls within the circle quadrant and increment the total number of points in circle quadrant or square quarter accordingly. Mainly used for multi-core benchmark.
 
 ## _void_ setDP(_byte_ myDP)
-Sets the decimal place accuracy to match the estimated pi value to, via myDP. For example setting `setDP(2)`will cause `isAccurate()` to return `true` if the estimation of pi is 3.14XXXXX. See [Accurate to Decimal Places](#accurate-to-decimal-places). Mainly used for multi-core benchmark.
+Sets the decimal place accuracy via myDP. For example setting `setDP(2)`will cause `isAccurate()` to return `true` if the estimation of pi is 3.14XXXXX. See [Accurate to Decimal Places](#accurate-to-decimal-places). Mainly used for multi-core benchmark.
 
 ## _bool_ isAccurate()
-Checks if the estimated pi value is accurate to the decimal places set in `setDP(byte myDP)` or `piToDP(byte myDP)`. Remember to run `setDP(byte myDP)` or `piToDP(byte myDP)` before using this function. Mainly used for multi-core benchmark.
+Checks if the estimated pi value is accurate to the decimal place accuracy set in `setDP(byte myDP)` or `piToDP(byte myDP)`. Remember to run `setDP(byte myDP)` or `piToDP(byte myDP)` before using this function. Mainly used for multi-core benchmark.
 
 ## _double_ computePi()
 Computes and returns an estimate for pi with the given number of points in the circle quadrant and square quarter. Mainly used for multi-core benchmark.
@@ -222,7 +229,7 @@ Reset all relevant parameters to run the benchmark again. Does not reseed the ra
 ## _void_ reseed()
 Reset the seed so the pseudo-random number list will restart again. See: [Accurate to Decimal Places](#accurate-to-decimal-places)
 
-## _void_ setSeed(_unsigned long_ mySeed)
+## _void_ setSeed(_unsigned int_ mySeed)
 Set the seed of the random number generator to mySeed. 
 
 ## _void_ startTimer()
