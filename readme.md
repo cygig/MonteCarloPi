@@ -16,6 +16,7 @@ Do note this method only estimates pi and will require a huge amount of good qua
 - [Multi-threaded Benmchmark](#multi-threaded-benchmark)
   - [Loop Benchmark](#loop-benchmark)
   - [Accurate to Decimal Places Benchmark](#accurate-to-decimal-places-benchmark)
+  - [Flowchart](#flowchart)
 - [Default Values](#default-values)
 - [Public Functions](#public-functions)
 
