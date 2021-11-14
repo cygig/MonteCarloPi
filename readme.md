@@ -10,17 +10,19 @@ Do note this method only estimates pi and will require a huge amount of good qua
 - [Updates](#updates)
 - [How does It Work?](#how-does-it-work)
 - [Circles, Squares, Quadrants and Quarters](#circles-squares-quadrants-and-quarters)
-- [Benchmarking](#benchmarking)
+- [Benchmark Tests](#benchmark-tests)
   - [Loop](#Loop)
   - [Accurate to Decimal Places](#accurate-to-decimal-places)
 - [Multi-threaded Benmchmark](#multi-threaded-benchmark)
+  - [Loop Benchmark](#loop-benchmark)
+  - [Accurate to Decimal Places Benchmark](#accurate-to-decimal-places-benchmark)
 - [Default Values](#default-values)
 - [Public Functions](#public-functions)
 
 # How Does It Work?
 
 # Updates
-- v0.7.1
+- v0.8.3
   - First upload
 
 # How Does It Work?
@@ -83,7 +85,7 @@ With all these information, we can estimate pi. The more random points we can ge
 # Circles, Squares, Quadrants and Quarters
 While this document differentiate between a whole circle, whole square, circle quadrant and square quarter for the sake of explanation, it is not the case in the code. In the code, circle refers to the circle quadrant while square refers to the square quarter, since those are the areas of interest.
 
-# Benchmarking
+# Benchmark Tests
 There are two main ways to benchmark an Arduino using this library.
 
 ## Loop
@@ -146,15 +148,28 @@ myPi.stopTimer();
 // Display results
 ...
 ```
-However, it takes more effort to implement a multi-threaded benchmark on a multi-core Arduino. Included in this library is an example for ESP32. A flowchart is provided to show the steps taken for a dual-core Arduino (like the ESP32) to run multi-threaded benchmark.
 
-The example makes use of the freeRTOS supported by ESP32 to create and delete multiple tasks. In our tests, the dual cores of ESP32 seemed to perform inconsistently: sometimes Core 0 is faster, sometimes Core 1 is faster and sometimes they are almost as fast. We are not sure why.
+However, it takes more effort to implement a multi-threaded benchmark on a multi-core Arduino. Included in this library is an example for the ESP32. A flowchart is provided to show the steps taken for a dual-core Arduino (like the ESP32) to run a dual-threaded benchmark.
 
-In the example, we will allow RTOS to pick whichever core it wants to for single-core benchmarks.
+The example makes use of the freeRTOS supported by ESP32 to create and delete multiple tasks or threads. In our tests, the dual cores of ESP32 seemed to perform inconsistently: sometimes Core 0 is faster, sometimes Core 1 is faster and sometimes they are almost as fast. We are not sure why, and we will assume the cores perform differently.
 
-For Loop benchmark, we will pin one thread to each core and allow them to execute as fast as possible continuously until the total number of loops is reached. For Accurate to Decimal Places benchmark, we will also pin one thread to each core and have them run independently as fast as possible until one of them produce a result that satisfy the accuracy.
+In the example, we will allow freeRTOS to pick whichever core it wants to for single-threaded benchmark. 
 
-While the example demonstrate the benchmark with two threads, feel free to experiment with other number of threads from 1 to 183, where anything more seems to crash the Arduino.
+While the example demonstrates the benchmark with two threads, feel free to experiment with other number of threads from 1 to 183, where anything more seems to crash the ESP32.
+
+## Loop Benchmark
+For Loop benchmark, we use a ticketing system to ensure the exact number of loop runs. Using a mutex, we can assign a ticket number to each loop on different threads that is non-repeating and non-overlapping.
+
+However, using mutex to issue tickets one at a time is slow. So we use chunks of tickets instead. If `ticketChunk` is 1000, the thread will loop 1000 times in one go before obtaining the next ticket. If there are 500,000 loops, then there will be 500 portions to share among the threads.
+
+We cannot use a `ticketChunk` value that is too large. If the cores' performances are not balanced, it may lead to the last chuck being processed by one slow thread alone for a long time while the rest had been deleted.
+
+In an extreme example, there are only two portions for two threads, each thread/core taking one portion. If one core is slower than the other by a lot, then towards the end, one thread will be slowly crunching the data while the other will long gone after finishing its portion. In another extreme scenario, there will only be one portion for two threads/cores, making one of them not contributing.
+
+We cannot use a `ticketChunk` too small, else the frequent taking and releasing of mutex will slow things down.
+
+## Accurate to Decimal Places Benchmark
+For Accurate to Decimal Places benchmark, we pin one thread to each core and have them run independently as fast as possible until one of them produce a result that satisfy the accuracy.
 
 ## Flowchart
 ![image](extras/MonteCarloPi_flowchart.svg)
@@ -162,12 +177,15 @@ While the example demonstrate the benchmark with two threads, feel free to exper
 # Default Values
 To maintain consistency, these are the default values for some of the constants in the library. It is recommended to try these out first before tweaking them.
 
-| Constant | Default Value | Remarks |
-| ---       | ---           | ---     |
-|No. of Loops | 500,000 | Can take a few minutes for slower Arduino like the Uno|
-| Decimal Place Accuracy | 5 | |
-| Seed | 69 | Arbitrarily chosen |
-| Pi Reference | 3.14159265359 | A static constant double referred to as `referencePi` |
+| Constant | Variable Name | Default Value | Location | Remarks |
+| ---      | ---           | ---           | ---      | ---     |
+|No. of Loops | `myLoop` | 500,000 | Example file | Can take a few minutes for slower Arduino like the Uno|
+| Decimal Place Accuracy | `decP` | 5 | Example file | |
+| Cores | `cores` | 2 | Example file| For ESP32 multi-threaded benchmark |
+| Threads | `threads` | 2 | Example | For ESP32 multi-threaded benchmark |
+| Ticket Chunk | `ticketChunk` | 1000 | Example file | For ESP32 multi-threaded benchmark |
+| Seed | `seed` | 69 | Header file| Arbitrarily chosen |
+| Pi Reference | `referencePi` |3.14159265359 | Header file | Static constant double |
 
 
 
