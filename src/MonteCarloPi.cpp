@@ -1,4 +1,4 @@
-/* MonteCarloPi by cygig
+/* MonteCarloPi by cygig v0.8.3
  * https://github.com/cygig/MonteCarloPi
  */
 

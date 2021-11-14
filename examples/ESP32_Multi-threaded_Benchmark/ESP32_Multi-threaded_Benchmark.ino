@@ -1,4 +1,4 @@
-/* MonteCarloPi by cygig
+/* MonteCarloPi by cygig v0.8.3
  * ESP32 Dual-core Benchmark Example
  * 
  * This example is meant for Expressif *ESP32* with two cores.
@@ -15,15 +15,18 @@ const byte threads=2;
 byte tNo[threads]; // Global array to keep track of thread no
 byte cNo[threads]; // Track the core a thread is pinned to
 
+
 /* THREAD PARAMETERS */
 const int stackSize=1000; // Allocate 1000 bytes per threads, estimated value
 const int waitTime=500;
 const byte lowPriority=1;
 const byte highPriority=2;
 
+
 /* TESTING PARAMETERS */
 const unsigned long myLoop=500000; // Loop 500,000 times
 const byte decP=5; // Accurate to 5 decimal places
+
 
 /* MUTEXES */
 // Mutexes to prevent the cores from writing to the same memory
@@ -31,16 +34,27 @@ const byte decP=5; // Accurate to 5 decimal places
 SemaphoreHandle_t mutexCS;
 SemaphoreHandle_t mutexPrint;
 
+
 /* MONTECARLOPI */
 MonteCarloPi myPi_Single; // One instant for single-core benchmark test
 MonteCarloPi myPi_Multi[threads]; // One instance for each of the dual-core benchmark tests
 double pi;
 
+
 /* FLAGS */
 // Flags for multi-core benchmark tests stored in arrays
-bool loopDone[threads];
+bool loopTimerStopped[threads];
+bool loopDone;
 bool dpFound[threads];
 bool dpDone[threads];
+
+
+/* LOOP TICKETS */
+// High ticketChunk, less resistant to imbalance cores
+// Low thicketChunk, slower
+unsigned long loopTicket; // Tracks the distribution of threads 
+const unsigned int ticketChunk=1000; 
+
 
 /* DISPLAY */
 // How many individual result to display in one row
@@ -73,8 +87,6 @@ void setup()
     highPriority,            // Task priority
     NULL                     // Task handle
   );
-
-
 
 }
 

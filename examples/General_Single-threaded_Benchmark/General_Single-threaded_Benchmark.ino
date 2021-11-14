@@ -1,4 +1,4 @@
-/* MonteCarloPi by cygig
+/* MonteCarloPi by cygig v0.8.3
  * Single-core Benchmark Example
  * 
  * This example shows the basic of running a single-core benchmark.

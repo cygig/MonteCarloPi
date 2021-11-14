@@ -1,8 +1,15 @@
+// MonteCarloPi by cygig v0.8.3
+// Loops Functions  
+
+
+
 // Function to prepare and launch multi-core Loop benchmark
 void launchLoop()
 {
-  // set all the flags to false
-  setAllFlags(loopDone, false);
+  // Initialise variables
+  setAllFlags(loopTimerStopped, false);
+  loopTicket=0;
+  loopDone=false;
   
   Serial.println(F("[ Dual-Core Benchmark ]\n"));
   
@@ -40,37 +47,55 @@ void launchLoop()
 
 
 
-void piLoop(void* myThread)
+// Note to self: Use a atomic pointer to allocate space before doing.
+void piLoop(void* myThread) // 1 func
 {
   // We cast the void pointer back to byte pointer (byte*)
   // We then get the value using * and store another variable
   byte thread = *((byte*)myThread);
 
-  // Sanity Check
-//  xSemaphoreTake(mutexPrint, portMAX_DELAY);
-//  Serial.print("Thread ");
-//  Serial.print(thread);
-//  Serial.print(" Core ");
-//  Serial.print(xPortGetCoreID());
-//  Serial.println(" shared the load.");
-//  xSemaphoreGive(mutexPrint);
-
   myPi_Multi[thread].startTimer();
 
-  // You need to count from 0 till myLoop-threads as there will always 
-  // be one extra for core more than 1
-  while( mpmGetAllSquares()  < (myLoop-(threads-1)) )
-  {
-    myPi_Multi[thread].runOnce();
-  }
+  unsigned long myTicket;
+  
+  // Keep doing as long as loopDone is flagged false
+  while(!loopDone) // 2 while
+  { 
+    // Issue ticket and increment by ticketChunk
+    // Use mutex to ensure this only happen one at a time
+    if (xSemaphoreTake(mutexCS, portMAX_DELAY) == pdTRUE) // 3 if
+    {
+      myTicket=loopTicket;
+      loopTicket+=ticketChunk;
+      xSemaphoreGive(mutexCS);
+
+      // Compute for each runs in the chunk
+      for (unsigned int i=0; i< ticketChunk; i++) // 4 for
+      { 
+        // Only compute if the ticket no is less than myLoop
+        if (myTicket<myLoop){
+          myPi_Multi[thread].runOnce();
+          myTicket++;
+        } 
+        
+        else{  // 5 else
+          loopDone=true; // flag to other threads loops ended
+          break; // break from for loop
+        } // 5 else
+        
+      } //4 for
+      
+    } // 3 if
+    
+  } // 2 while
 
   myPi_Multi[thread].stopTimer();
   
-  loopDone[thread]=true;
+  loopTimerStopped[thread]=true; // Mark the timing as taken down
 
   vTaskDelete(NULL); // Delete itself
 
-}
+} // 1 func
 
 
 
@@ -79,7 +104,8 @@ void checkLoop(void* parameter)
 {
   while(1) // Keep looping, we need this function to run non-stop
   {
-    if( allFlagsTrue(loopDone) ) // Both loop threads are done
+    // All threads are done, including stopping timer
+    if( allFlagsTrue(loopTimerStopped) ) 
     { 
       // We need to take into account the time taken to compute the accumulated values
       // This is usually 0ms as it is too fast
